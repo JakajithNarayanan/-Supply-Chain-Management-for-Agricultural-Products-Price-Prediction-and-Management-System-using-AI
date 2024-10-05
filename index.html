@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supply Chain Price Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            <h3>Select City</h3>
+            <select id="citySelect">
+                <option value="Mumbai">Mumbai</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Chennai">Chennai</option>
+                <option value="Bangalore">Bangalore</option>
+                <option value="Kolkata">Kolkata</option>
+            </select>
+        </div>
+
+        <div class="box">
+            <h3>Select Vegetable</h3>
+            <select id="vegetableSelect">
+                <option value="Tomato">Tomato</option>
+                <option value="Potato">Potato</option>
+                <option value="Onion">Onion</option>
+                <option value="Carrot">Carrot</option>
+                <option value="Spinach">Spinach</option>
+            </select>
+        </div>
+
+        <button id="predictBtn">Predict Price</button>
+
+        <div class="box" id="priceResult" style="display:none;">
+            <h3>Predicted Price</h3>
+            <p id="predictedPrice"></p>
+            <p id="daysToChange"></p>
+        </div>
+
+        <div class="box" id="graphSection" style="display:none;">
+            <h3>Price Prediction Graph</h3>
+            <canvas id="priceGraph" width="400" height="400"></canvas>
+            <p id="graphExplanation">This graph shows the predicted price trends based on various factors including weather and social media sentiment.</p>
+        </div>
+
+        <div class="box" id="wordCloudSection" style="display:none;">
+            <h3>Word Cloud</h3>
+            <img id="wordCloudImage" src="" alt="Word Cloud">
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#predictBtn').click(function() {
+                const vegetable = $('#vegetableSelect').val();
+                const city = $('#citySelect').val();
+                
+                $.ajax({
+                    url: '/get_price_prediction',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ input: { vegetable, city } }),
+                    success: function(response) {
+                        $('#predictedPrice').text(`Predicted Price: ₹${response.predicted_price}`);
+                        $('#daysToChange').text(`Estimated Days for Price Change: ${response.days_to_change} days`);
+                        $('#priceResult').show();
+                        drawGraph(response); // Call the function to draw the graph
+                        getWordCloud(vegetable); // Call to get the word cloud
+                    }
+                });
+            });
+
+            function drawGraph(data) {
+                const ctx = document.getElementById('priceGraph').getContext('2d');
+                const predictedPrices = [data.predicted_price, data.predicted_price * 1.1, data.predicted_price * 0.9];
+                const labels = ['Current', 'Next Day', 'Following Day'];
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Predicted Prices',
+                            data: predictedPrices,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            fill: false
+                        }]
+                    }
+                });
+
+                $('#graphSection').show();
+            }
+
+            function getWordCloud(vegetable) {
+                $.ajax({
+                    url: '/get_twitter_data',
+                    method: 'GET',
+                    data: { query: vegetable },
+                    success: function(response) {
+                        $('#wordCloudImage').attr('src', response.wordcloud_url);
+                        $('#wordCloudSection').show();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
